@@ -4,7 +4,7 @@ from sklearn.preprocessing import MinMaxScaler
 
 def load_and_process_data(filepath):
     try:
-        df = pd.read_csv(filepath, low_memory=False)
+        df = pd.read_csv(filepath, sep=';', low_memory=False)
         print(f"Successfully loaded data from {filepath}. Shape: {df.shape}")
     except FileNotFoundError:
         print(f"Error: File not found at {filepath}")
@@ -13,10 +13,18 @@ def load_and_process_data(filepath):
         print(f"Error loading file: {e}")
         return None
 
-    numeric_cols = df.select_dtypes(include=[np.number]).columns
+    # Convert comma decimal separators to dots for numeric columns
+    numeric_cols = ['budget', 'revenue', 'runtime', 'vote_average', 'vote_count', 'popularity']
+    numeric_cols = [c for c in numeric_cols if c in df.columns]
+    
+    for col in numeric_cols:
+        if df[col].dtype == 'object':
+            df[col] = df[col].astype(str).str.replace(',', '.').astype(float)
+    
+    all_numeric_cols = df.select_dtypes(include=[np.number]).columns
     non_numeric_cols = df.select_dtypes(exclude=[np.number]).columns
 
-    df[numeric_cols] = df[numeric_cols].fillna(0)
+    df[all_numeric_cols] = df[all_numeric_cols].fillna(0)
     df[non_numeric_cols] = df[non_numeric_cols].fillna('Unknown')
     
     if 'release_date' in df.columns:
