@@ -1,3 +1,4 @@
 data_movies_clean.csv
 movie_5d_vectors.npy
 *.csv
+*.pyc
