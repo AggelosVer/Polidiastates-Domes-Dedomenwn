@@ -53,7 +53,7 @@ def filter_movies(df):
     
     return filtered_df
 
-def load_and_process_data(filepath, apply_filter=False):
+def load_and_process_data(filepath, apply_filter=False, normalize=True):
     try:
         df = pd.read_csv(filepath, low_memory=False)
     except FileNotFoundError:
@@ -82,7 +82,7 @@ def load_and_process_data(filepath, apply_filter=False):
     cols_to_normalize = ['budget', 'revenue', 'runtime', 'vote_average', 'vote_count', 'popularity']
     cols_to_normalize = [c for c in cols_to_normalize if c in df.columns]
     
-    if cols_to_normalize:
+    if cols_to_normalize and normalize:
         scaler = MinMaxScaler()
         df[cols_to_normalize] = scaler.fit_transform(df[cols_to_normalize])
     
