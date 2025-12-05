@@ -236,6 +236,130 @@ class RTree:
         disjoint = np.any(mbr1[1] < mbr2[0]) or np.any(mbr1[0] > mbr2[1])
         return not disjoint
 
+    def visualize(self, precision: int = 2) -> None:
+        print("\n" + "=" * 60)
+        print("R-TREE STRUCTURE VISUALIZATION")
+        print("=" * 60)
+        stats = self.get_statistics()
+        print(f"Tree Height: {stats['height']}")
+        print(f"Total Nodes: {stats['total_nodes']} (Internal: {stats['internal_nodes']}, Leaf: {stats['leaf_nodes']})")
+        print(f"Total Entries: {stats['total_entries']}")
+        print(f"Max Entries per Node: {self.max_entries}")
+        print(f"Min Entries per Node: {self.min_entries}")
+        print(f"Dimensions: {self.dimension}")
+        print("=" * 60)
+        if self.root is None or (self.root.is_leaf and len(self.root.entries) == 0):
+            print("\n[Empty Tree]")
+            print("=" * 60)
+            return
+        queue = [(self.root, 0, None)]
+        current_level = -1
+        node_counter = 0
+        while queue:
+            node, level, parent_mbr = queue.pop(0)
+            if level != current_level:
+                current_level = level
+                node_counter = 0
+                print(f"\n{'─' * 60}")
+                print(f"LEVEL {level} {'(ROOT)' if level == 0 else '(INTERNAL)' if level < stats['height'] - 1 else '(LEAF)'}")
+                print(f"{'─' * 60}")
+            node_mbr = node.get_mbr()
+            node_type = "LEAF" if node.is_leaf else "INTERNAL"
+            print(f"\n  Node {node_counter} [{node_type}] - {len(node.entries)} entries")
+            if node_mbr:
+                min_str = "[" + ", ".join([f"{x:.{precision}f}" for x in node_mbr[0]]) + "]"
+                max_str = "[" + ", ".join([f"{x:.{precision}f}" for x in node_mbr[1]]) + "]"
+                print(f"  MBR: min={min_str}, max={max_str}")
+            else:
+                print(f"  MBR: None (empty node)")
+            if node.is_leaf:
+                for i, (mbr, value) in enumerate(node.entries):
+                    point_str = "[" + ", ".join([f"{x:.{precision}f}" for x in mbr[0]]) + "]"
+                    val_repr = repr(value) if len(repr(value)) < 30 else repr(value)[:27] + "..."
+                    print(f"    ├── Entry {i}: point={point_str}, value={val_repr}")
+            else:
+                for i, (mbr, child) in enumerate(node.entries):
+                    min_str = "[" + ", ".join([f"{x:.{precision}f}" for x in mbr[0]]) + "]"
+                    max_str = "[" + ", ".join([f"{x:.{precision}f}" for x in mbr[1]]) + "]"
+                    print(f"    ├── Child {i}: MBR min={min_str}, max={max_str}")
+                    queue.append((child, level + 1, mbr))
+            node_counter += 1
+        print("\n" + "=" * 60)
+        print("END OF R-TREE VISUALIZATION")
+        print("=" * 60 + "\n")
+
+    def get_height(self) -> int:
+        if self.root is None:
+            return 0
+        height = 1
+        node = self.root
+        while not node.is_leaf and node.entries:
+            node = node.entries[0][1]
+            height += 1
+        return height
+
+    def get_statistics(self) -> dict:
+        stats = {
+            'height': 0,
+            'total_nodes': 0,
+            'internal_nodes': 0,
+            'leaf_nodes': 0,
+            'total_entries': 0,
+            'entries_per_level': {},
+            'nodes_per_level': {}
+        }
+        if self.root is None:
+            return stats
+        queue = [(self.root, 0)]
+        max_level = 0
+        while queue:
+            node, level = queue.pop(0)
+            max_level = max(max_level, level)
+            stats['total_nodes'] += 1
+            if level not in stats['nodes_per_level']:
+                stats['nodes_per_level'][level] = 0
+                stats['entries_per_level'][level] = 0
+            stats['nodes_per_level'][level] += 1
+            stats['entries_per_level'][level] += len(node.entries)
+            if node.is_leaf:
+                stats['leaf_nodes'] += 1
+                stats['total_entries'] += len(node.entries)
+            else:
+                stats['internal_nodes'] += 1
+                for mbr, child in node.entries:
+                    queue.append((child, level + 1))
+        stats['height'] = max_level + 1
+        return stats
+
+    def print_compact(self, precision: int = 1) -> None:
+        print("\n[R-Tree Compact View]")
+        print(f"Height: {self.get_height()}, Dim: {self.dimension}")
+        self._print_node_compact(self.root, 0, precision)
+        print()
+
+    def _print_node_compact(self, node: RTreeNode, indent: int, precision: int) -> None:
+        prefix = "  " * indent
+        node_mbr = node.get_mbr()
+        if node_mbr:
+            mbr_str = f"[{node_mbr[0][0]:.{precision}f}..{node_mbr[1][0]:.{precision}f}]"
+            if self.dimension > 1:
+                mbr_str += f" x [{node_mbr[0][1]:.{precision}f}..{node_mbr[1][1]:.{precision}f}]"
+            if self.dimension > 2:
+                mbr_str += f" x ..."
+        else:
+            mbr_str = "[empty]"
+        if node.is_leaf:
+            print(f"{prefix}LEAF({len(node.entries)} pts): {mbr_str}")
+            for i, (mbr, val) in enumerate(node.entries):
+                pt = ", ".join([f"{x:.{precision}f}" for x in mbr[0][:2]])
+                val_str = str(val)[:15]
+                print(f"{prefix}  └─ ({pt}): {val_str}")
+        else:
+            print(f"{prefix}NODE({len(node.entries)} children): {mbr_str}")
+            for i, (mbr, child) in enumerate(node.entries):
+                self._print_node_compact(child, indent + 1, precision)
+
+
 if __name__ == "__main__":
     print("=== Testing R-Tree ===")
     rtree = RTree(max_entries=4, min_entries=2, dimension=2)
@@ -251,12 +375,23 @@ if __name__ == "__main__":
     for p, v in points:
         rtree.insert(p, v)
         print(f"Inserted {v} at {p}")
+
+    print("\n--- R-Tree Visualization after insertions ---")
+    rtree.visualize()
+
+    print("\n--- Compact View ---")
+    rtree.print_compact()
+
     print("\nSearching MBR [[0,0], [3,3]] (Should find A, B):")
     results = rtree.search([0, 0], [3, 3])
     for p, v in results:
         print(f"  Found {v} at {p}")
     print("\nDeleting B...")
     rtree.delete([2, 2], "B")
+
+    print("\n--- R-Tree Visualization after deletion ---")
+    rtree.visualize()
+
     print("Searching MBR [[0,0], [3,3]] (Should find A only):")
     results = rtree.search([0, 0], [3, 3])
     for p, v in results:
@@ -267,3 +402,20 @@ if __name__ == "__main__":
     results = rtree.search([0, 0], [3, 3])
     for p, v in results:
         print(f"  Found {v} at {p}")
+
+    print("\n--- Final R-Tree State ---")
+    rtree.visualize()
+
+    print("\n=== Testing with more data (5D) ===")
+    rtree_5d = RTree(max_entries=3, min_entries=1, dimension=5)
+    for i in range(15):
+        point = [float(i % 5), float(i // 5), float(i * 0.5), float(i * 0.3), float(i * 0.1)]
+        rtree_5d.insert(point, f"P{i}")
+    
+    print("\n--- 5D R-Tree Structure (compact) ---")
+    rtree_5d.print_compact()
+
+    print("\n--- 5D R-Tree Statistics ---")
+    stats = rtree_5d.get_statistics()
+    for key, value in stats.items():
+        print(f"  {key}: {value}")
