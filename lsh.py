@@ -65,6 +65,129 @@ class MinHashLSH:
     def get_jaccard_sim(self, sig1: np.ndarray, sig2: np.ndarray) -> float:
         return np.mean(sig1 == sig2)
 
+def find_top_n_similar_movies(
+    filtered_movie_ids: List[int],
+    df,
+    text_attribute: str = 'production_company_names',
+    query_movie_id: int = None,
+    top_n: int = 10,
+    num_perm: int = 128,
+    threshold: float = 0.5
+) -> List[Tuple[int, float, List[str]]]:
+
+    import pandas as pd
+    import ast
+    import re
+    
+    def clean_and_tokenize(text):
+
+        if pd.isna(text):
+            return []
+        try:
+
+            if isinstance(text, str) and text.strip().startswith('[') and text.strip().endswith(']'):
+                items = ast.literal_eval(text)
+            else:
+                items = [text]
+        except (ValueError, SyntaxError):
+            items = [text]
+        
+        if not isinstance(items, list):
+            items = [str(items)]
+        
+        all_tokens = set()
+        for item in items:
+            if not isinstance(item, str):
+                continue
+            item_lower = item.lower()
+            item_clean = re.sub(r'[^\w\s]', '', item_lower)
+            tokens = item_clean.split()
+            all_tokens.update(tokens)
+        
+        return list(all_tokens)
+    
+
+    if text_attribute not in df.columns:
+        raise ValueError(f"Column '{text_attribute}' not found in DataFrame")
+    
+    if not filtered_movie_ids:
+        raise ValueError("filtered_movie_ids list cannot be empty")
+    
+
+    if query_movie_id is None:
+        query_movie_id = filtered_movie_ids[0]
+    
+
+    if query_movie_id not in filtered_movie_ids:
+        raise ValueError(f"query_movie_id {query_movie_id} not in filtered_movie_ids")
+    
+    print(f"Building LSH index for {len(filtered_movie_ids)} movies...")
+    print(f"Text attribute: '{text_attribute}'")
+    print(f"Query movie ID: {query_movie_id}")
+    
+
+    lsh = MinHashLSH(num_perm=num_perm, threshold=threshold)  
+
+    movie_tokens = {}
+    signatures = {}
+    
+    for movie_id in filtered_movie_ids:
+
+        if movie_id not in df.index:
+            continue
+        
+        row = df.loc[movie_id]
+        text_raw = row.get(text_attribute, '')
+        
+
+        tokens = clean_and_tokenize(text_raw)
+        movie_tokens[movie_id] = tokens
+        
+
+        sig = lsh.compute_signature(tokens)
+        signatures[movie_id] = sig
+        
+
+        lsh.add(movie_id, sig)
+    
+    print(f"Indexed {len(signatures)} movies")
+    
+
+    if query_movie_id not in signatures:
+        raise ValueError(f"Query movie {query_movie_id} has no valid signature")
+    
+    query_sig = signatures[query_movie_id]
+    query_tokens = movie_tokens[query_movie_id]
+    
+    print(f"Query movie tokens: {query_tokens}")
+    
+
+    candidates = lsh.query(query_sig)
+    print(f"LSH returned {len(candidates)} candidates")
+    
+
+    results = []
+    for movie_id in candidates:
+        if movie_id == query_movie_id:
+
+            continue
+        
+        if movie_id in signatures:
+            similarity = lsh.get_jaccard_sim(query_sig, signatures[movie_id])
+            tokens = movie_tokens.get(movie_id, [])
+            results.append((movie_id, similarity, tokens))
+    
+
+    results.sort(key=lambda x: x[1], reverse=True)
+    top_results = results[:top_n]
+    
+    print(f"\nTop {len(top_results)} similar movies:")
+    for rank, (movie_id, sim, tokens) in enumerate(top_results, 1):
+        print(f"  {rank}. Movie ID {movie_id}: similarity={sim:.4f}, tokens={tokens[:5]}...")
+    
+    return top_results
+
+
 if __name__ == "__main__":
     print("=== Testing MinHash LSH ===")
     lsh = MinHashLSH(num_perm=128, threshold=0.5)
@@ -89,3 +212,32 @@ if __name__ == "__main__":
     print("\nQuerying for Doc4 (should be similar to Doc1):")
     candidates = lsh.query(sig4)
     print(f"Candidates: {candidates}")
+    
+    print("\n\n=== Testing find_top_n_similar_movies ===")
+    try:
+        import pandas as pd
+        from project1_loader import load_and_process_data
+        
+
+        df = load_and_process_data('data_movies_clean.csv', apply_filter=False, normalize=False)
+        
+        if df is not None and len(df) > 0:
+
+            sample_ids = df.index[:100].tolist()
+            
+
+            results = find_top_n_similar_movies(
+                filtered_movie_ids=sample_ids,
+                df=df,
+                text_attribute='production_company_names',
+                query_movie_id=sample_ids[0],
+                top_n=5,
+                num_perm=128,
+                threshold=0.5
+            )
+            
+            print(f"\nFound {len(results)} similar movies")
+        else:
+            print("Could not load data for extended testing")
+    except Exception as e:
+        print(f"Extended test skipped: {e}")
