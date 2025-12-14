@@ -4,3 +4,4 @@ movie_5d_vectors.npy
 *.pyc
 *.png
 *.txt
+*.json
