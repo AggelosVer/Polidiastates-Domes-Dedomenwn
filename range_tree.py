@@ -64,13 +64,25 @@ class RangeTree:
         return node
     
     def query(self, range_min: List[float], range_max: List[float]) -> List[Tuple[np.ndarray, Any]]:
+        if len(range_min) != self.dimension:
+            raise ValueError(f"range_min must have {self.dimension} dimensions, got {len(range_min)}")
+        if len(range_max) != self.dimension:
+            raise ValueError(f"range_max must have {self.dimension} dimensions, got {len(range_max)}")
+        
+        range_min = np.array(range_min, dtype=float)
+        range_max = np.array(range_max, dtype=float)
+        
+        for i in range(self.dimension):
+            if range_min[i] > range_max[i]:
+                raise ValueError(f"range_min[{i}] ({range_min[i]}) > range_max[{i}] ({range_max[i]})")
+        
         if self.root is None:
             return []
-        if len(range_min) != self.dimension or len(range_max) != self.dimension:
-            raise ValueError(f"Range must have {self.dimension} dimensions")
+        
         results = []
-        self._query(self.root, np.array(range_min), np.array(range_max), 0, results)
+        self._query(self.root, range_min, range_max, 0, results)
         return results
+
     
     def _query(self, node: Optional[RangeTreeNode], range_min: np.ndarray, 
                range_max: np.ndarray, dim: int, results: List[Tuple[np.ndarray, Any]]):
@@ -172,11 +184,17 @@ class RangeTree:
         return self._count_nodes(node.left) + self._count_nodes(node.right)
 
     def knn_query(self, query_point: List[float], k: int = 1) -> List[Tuple[np.ndarray, Any]]:
+        if k <= 0:
+            raise ValueError(f"k must be positive, got {k}")
+        
+        if len(query_point) != self.dimension:
+            raise ValueError(f"query_point must have {self.dimension} dimensions, got {len(query_point)}")
+        
+        query_point = np.array(query_point, dtype=float)
+        
         if self.root is None:
             return []
-        query_point = np.array(query_point)
-        if len(query_point) != self.dimension:
-            raise ValueError(f"Query point must have {self.dimension} dimensions")
+        
         heap = [] 
         self._knn_search(self.root, query_point, k, heap)
         results = []
@@ -184,6 +202,7 @@ class RangeTree:
             dist, point, data = heapq.heappop(heap)
             results.append((point, data))
         return results[::-1]
+
 
     def _knn_search(self, node: Optional[RangeTreeNode], query_point: np.ndarray, k: int, heap: List):
         if node is None:

@@ -113,7 +113,9 @@ def find_top_n_similar_movies(
     if not filtered_movie_ids:
         raise ValueError("filtered_movie_ids list cannot be empty")
     
-
+    if top_n <= 0:
+        raise ValueError(f"top_n must be positive, got {top_n}")
+    
     if query_movie_id is None:
         query_movie_id = filtered_movie_ids[0]
     
@@ -134,10 +136,14 @@ def find_top_n_similar_movies(
     for movie_id in filtered_movie_ids:
 
         if movie_id not in df.index:
+            print(f"Warning: Movie ID {movie_id} not found in dataset, skipping")
             continue
         
         row = df.loc[movie_id]
         text_raw = row.get(text_attribute, '')
+        
+        if pd.isna(text_raw) or text_raw == '':
+            text_raw = ''
         
 
         tokens = clean_and_tokenize(text_raw)

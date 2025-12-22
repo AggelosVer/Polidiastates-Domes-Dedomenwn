@@ -99,6 +99,18 @@ class KDTree:
         self.insert(new_point)
 
     def range_query(self, range_min, range_max):
+        if len(range_min) != self.k:
+            raise ValueError(f"range_min must have {self.k} dimensions, got {len(range_min)}")
+        if len(range_max) != self.k:
+            raise ValueError(f"range_max must have {self.k} dimensions, got {len(range_max)}")
+        
+        for i in range(self.k):
+            if range_min[i] > range_max[i]:
+                raise ValueError(f"range_min[{i}] ({range_min[i]}) > range_max[{i}] ({range_max[i]})")
+        
+        if self.root is None:
+            return []
+        
         results = []
         self._range_query_recursive(self.root, range_min, range_max, results)
         return results
@@ -120,6 +132,15 @@ class KDTree:
             self._range_query_recursive(node.right, range_min, range_max, results)
 
     def knn_query(self, target, k):
+        if len(target) != self.k:
+            raise ValueError(f"target must have {self.k} dimensions, got {len(target)}")
+        
+        if k <= 0:
+            raise ValueError(f"k must be positive, got {k}")
+        
+        if self.root is None:
+            return []
+        
         heap = []
         self._knn_recursive(self.root, target, k, heap)
         return sorted([(-h[0], h[1]) for h in heap], key=lambda x: x[0])

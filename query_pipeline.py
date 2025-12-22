@@ -48,6 +48,10 @@ class MovieQueryPipeline:
             print("Error: Data not loaded. Call load_data() first.")
             return False
         
+        if self.df.empty:
+            print("Error: DataFrame is empty, cannot build index")
+            return False
+        
         if len(numeric_attributes) != self.dimension:
             print(f"Error: Expected {self.dimension} attributes, got {len(numeric_attributes)}")
             return False
@@ -55,6 +59,13 @@ class MovieQueryPipeline:
         for attr in numeric_attributes:
             if attr not in self.df.columns:
                 print(f"Error: Attribute '{attr}' not found in dataset")
+                return False
+            
+            if self.df[attr].isna().any():
+                print(f"Error: Attribute '{attr}' contains NaN values")
+                return False
+            if np.isinf(self.df[attr]).any():
+                print(f"Error: Attribute '{attr}' contains infinite values")
                 return False
         
         print(f"\nBuilding {self.index_type} index with attributes: {numeric_attributes}")
@@ -96,6 +107,12 @@ class MovieQueryPipeline:
                 print(f"Warning: Attribute '{attr}' not found, skipping constraint")
                 continue
             
+            if min_val > max_val:
+                raise ValueError(f"Invalid constraint for '{attr}': min ({min_val}) > max ({max_val})")
+            
+            if np.isnan(min_val) or np.isnan(max_val):
+                raise ValueError(f"Invalid constraint for '{attr}': contains NaN values")
+            
             filtered_df = filtered_df[
                 (filtered_df[attr] >= min_val) & (filtered_df[attr] <= max_val)
             ]
@@ -110,6 +127,15 @@ class MovieQueryPipeline:
             print("Error: Spatial index not built. Call build_spatial_index() first.")
             return []
         
+        if len(range_min) != self.dimension:
+            raise ValueError(f"range_min must have {self.dimension} dimensions, got {len(range_min)}")
+        if len(range_max) != self.dimension:
+            raise ValueError(f"range_max must have {self.dimension} dimensions, got {len(range_max)}")
+        
+        for i in range(self.dimension):
+            if range_min[i] > range_max[i]:
+                raise ValueError(f"range_min[{i}] ({range_min[i]}) > range_max[{i}] ({range_max[i]})")
+        
         print(f"\nPerforming range query: [{range_min}, {range_max}]")
         
         results = self.index_manager.range_query(range_min, range_max)
@@ -122,6 +148,12 @@ class MovieQueryPipeline:
         if self.index_manager is None:
             print("Error: Spatial index not built. Call build_spatial_index() first.")
             return []
+        
+        if len(query_point) != self.dimension:
+            raise ValueError(f"query_point must have {self.dimension} dimensions, got {len(query_point)}")
+        
+        if k <= 0:
+            raise ValueError(f"k must be positive, got {k}")
         
         print(f"\nPerforming kNN query: point={query_point}, k={k}")
         
@@ -142,6 +174,12 @@ class MovieQueryPipeline:
         if not movie_ids:
             print("Error: No movie IDs provided for LSH")
             return []
+        
+        if self.text_attribute not in self.df.columns:
+            raise ValueError(f"Text attribute '{self.text_attribute}' not found in dataset")
+        
+        if top_n <= 0:
+            raise ValueError(f"top_n must be positive, got {top_n}")
         
         print(f"\nApplying LSH on {len(movie_ids)} movies using '{self.text_attribute}'")
         
@@ -190,23 +228,31 @@ class MovieQueryPipeline:
         
         spatial_results = []
         
+        if query_type not in ['range', 'knn']:
+            raise ValueError(f"query_type must be 'range' or 'knn', got '{query_type}'")
+        
+        if top_n <= 0:
+            raise ValueError(f"top_n must be positive, got {top_n}")
+        
         if query_type == 'range':
             if range_min is None or range_max is None:
-                print("Error: range_min and range_max required for range query")
-                return []
+                raise ValueError("range_min and range_max are required for range query")
             
-            spatial_results = self.range_query(range_min, range_max)
+            try:
+                spatial_results = self.range_query(range_min, range_max)
+            except Exception as e:
+                print(f"Error during range query: {e}")
+                return []
             
         elif query_type == 'knn':
             if knn_query_point is None:
-                print("Error: knn_query_point required for kNN query")
-                return []
+                raise ValueError("knn_query_point is required for kNN query")
             
-            spatial_results = self.knn_query(knn_query_point, knn_k)
-        
-        else:
-            print(f"Error: Unknown query_type '{query_type}'. Use 'range' or 'knn'")
-            return []
+            try:
+                spatial_results = self.knn_query(knn_query_point, knn_k)
+            except Exception as e:
+                print(f"Error during kNN query: {e}")
+                return []
         
         if not spatial_results:
             print("Spatial query returned no results")

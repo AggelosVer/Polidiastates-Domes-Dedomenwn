@@ -63,7 +63,11 @@ class QuadTree:
 
     def insert(self, point: np.ndarray, data: Any = None) -> bool:
         if point.shape[0] != self.k:
-            raise ValueError(f"Point must have {self.k} dimensions")
+            raise ValueError(f"Point must have {self.k} dimensions, got {point.shape[0]}")
+        
+        if np.any(np.isnan(point)) or np.any(np.isinf(point)):
+            raise ValueError("Point contains NaN or infinite values")
+        
         if not self.root.contains_point(point):
             return False
         return self._insert(self.root, point, data)
@@ -98,7 +102,7 @@ class QuadTree:
 
     def delete(self, point: np.ndarray, data: Any = None) -> bool:
         if point.shape[0] != self.k:
-            raise ValueError(f"Point must have {self.k} dimensions")
+            raise ValueError(f"Point must have {self.k} dimensions, got {point.shape[0]}")
         if not self.root.contains_point(point):
             return False
         result = self._delete(self.root, point, data)
@@ -122,7 +126,12 @@ class QuadTree:
 
     def range_query(self, query_bounds: np.ndarray) -> Tuple[np.ndarray, List[Any]]:
         if query_bounds.shape != (self.k, 2):
-            raise ValueError(f"Query bounds must be a ({self.k}, 2) array")
+            raise ValueError(f"Query bounds must be a ({self.k}, 2) array, got {query_bounds.shape}")
+        
+        for i in range(self.k):
+            if query_bounds[i, 0] > query_bounds[i, 1]:
+                raise ValueError(f"query_bounds[{i}]: min ({query_bounds[i, 0]}) > max ({query_bounds[i, 1]})")
+        
         points = []
         data = []
         self._range_query(self.root, query_bounds, points, data)
