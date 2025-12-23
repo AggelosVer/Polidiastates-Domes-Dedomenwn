@@ -25,9 +25,14 @@ class RTree:
         self.root = RTreeNode(is_leaf=True)
 
     def insert(self, point: List[float], value: Any):
-        point = np.array(point, dtype=float)
         if len(point) != self.dimension:
-            raise ValueError(f"Point must have {self.dimension} dimensions")
+            raise ValueError(f"Point must have {self.dimension} dimensions, got {len(point)}")
+        
+        point = np.array(point, dtype=float)
+        
+        if np.any(np.isnan(point)) or np.any(np.isinf(point)):
+            raise ValueError("Point contains NaN or infinite values")
+        
         mbr = (point, point)
         leaf = self._choose_leaf(self.root, mbr)
         leaf.entries.append((mbr, value))
@@ -35,6 +40,7 @@ class RTree:
             self._split_node(leaf)
         else:
             self._adjust_tree(leaf)
+
 
     def delete(self, point: List[float], value: Any = None) -> bool:
         point = np.array(point, dtype=float)
@@ -63,12 +69,23 @@ class RTree:
         return False
 
     def search(self, range_min: List[float], range_max: List[float]) -> List[Tuple[np.ndarray, Any]]:
+        if len(range_min) != self.dimension:
+            raise ValueError(f"range_min must have {self.dimension} dimensions, got {len(range_min)}")
+        if len(range_max) != self.dimension:
+            raise ValueError(f"range_max must have {self.dimension} dimensions, got {len(range_max)}")
+        
         range_min = np.array(range_min, dtype=float)
         range_max = np.array(range_max, dtype=float)
+        
+        for i in range(self.dimension):
+            if range_min[i] > range_max[i]:
+                raise ValueError(f"range_min[{i}] ({range_min[i]}) > range_max[{i}] ({range_max[i]})")
+        
         search_mbr = (range_min, range_max)
         results = []
         self._search_recursive(self.root, search_mbr, results)
         return results
+
 
     def _search_recursive(self, node: RTreeNode, search_mbr: Tuple[np.ndarray, np.ndarray], results: List):
         for mbr, child in node.entries:
