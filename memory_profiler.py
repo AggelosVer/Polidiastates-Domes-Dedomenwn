@@ -14,10 +14,6 @@ from extract_5d_vectors import extract_5d_vectors
 
 
 def get_size_deep(obj, seen=None):
-    """
-    Recursively calculate the deep size of a Python object.
-    This includes nested objects, attributes, and collections.
-    """
     size = sys.getsizeof(obj)
     if seen is None:
         seen = set()
@@ -43,9 +39,6 @@ def get_size_deep(obj, seen=None):
 
 
 def measure_memory_basic(index_structure, name: str) -> Dict[str, Any]:
-    """
-    Measure memory using sys.getsizeof for shallow and deep sizes.
-    """
     shallow_size = sys.getsizeof(index_structure)
     deep_size = get_size_deep(index_structure)
     
@@ -61,16 +54,6 @@ def measure_memory_basic(index_structure, name: str) -> Dict[str, Any]:
 
 
 def measure_memory_tracemalloc(build_function, name: str) -> Dict[str, Any]:
-    """
-    Measure memory using tracemalloc to track actual memory allocations.
-    
-    Args:
-        build_function: A callable that builds the index structure
-        name: Name of the index structure
-    
-    Returns:
-        Dictionary containing memory measurements
-    """
     tracemalloc.start()
     
     snapshot_before = tracemalloc.take_snapshot()
@@ -103,14 +86,12 @@ def measure_memory_tracemalloc(build_function, name: str) -> Dict[str, Any]:
 
 
 def build_kdtree(points: np.ndarray, data: List) -> KDTree:
-    """Build KD-Tree index."""
     tree = KDTree(k=points.shape[1])
     tree.build(points.tolist(), data)
     return tree
 
 
 def build_quadtree(points: np.ndarray, data: List) -> QuadTree:
-    """Build QuadTree index."""
     mins = points.min(axis=0)
     maxs = points.max(axis=0)
     bounds = np.column_stack([mins, maxs])
@@ -121,13 +102,11 @@ def build_quadtree(points: np.ndarray, data: List) -> QuadTree:
 
 
 def build_rangetree(points: np.ndarray, data: List) -> RangeTree:
-    """Build Range Tree index."""
     tree = RangeTree(points=points.tolist(), data=data, dimension=points.shape[1])
     return tree
 
 
 def build_rtree(points: np.ndarray, data: List) -> RTree:
-    """Build R-Tree index."""
     tree = RTree(max_entries=10, min_entries=3, dimension=points.shape[1])
     for i, point in enumerate(points):
         tree.insert(point.tolist(), data[i])
@@ -135,17 +114,6 @@ def build_rtree(points: np.ndarray, data: List) -> RTree:
 
 
 def profile_all_indexes(points: np.ndarray, data: List, dataset_size: int) -> pd.DataFrame:
-    """
-    Profile memory usage of all index structures.
-    
-    Args:
-        points: NumPy array of data points
-        data: List of associated data values
-        dataset_size: Number of points to use for profiling
-    
-    Returns:
-        DataFrame with profiling results
-    """
     print(f"\n{'='*80}")
     print(f"MEMORY PROFILING FOR {dataset_size} DATA POINTS")
     print(f"{'='*80}\n")
@@ -191,7 +159,6 @@ def profile_all_indexes(points: np.ndarray, data: List, dataset_size: int) -> pd
 
 
 def print_comparison_table(df: pd.DataFrame):
-    """Print a formatted comparison table."""
     print(f"\n{'='*80}")
     print("MEMORY USAGE COMPARISON")
     print(f"{'='*80}\n")
@@ -209,8 +176,6 @@ def print_comparison_table(df: pd.DataFrame):
 
 
 def main():
-    """Main function to run memory profiling."""
-    
     print("Loading movie dataset...")
     FILE_PATH = 'data_movies_clean.csv'
     df = load_and_process_data(FILE_PATH, apply_filter=True)
@@ -226,7 +191,6 @@ def main():
     
     data_values = reference_df['id'].tolist() if 'id' in reference_df.columns else list(range(len(vectors)))
     
-    # Dynamically determine dataset sizes based on available data
     total_vectors = len(vectors)
     if total_vectors >= 2000:
         dataset_sizes = [100, 500, 1000, 2000]
@@ -241,7 +205,6 @@ def main():
     else:
         dataset_sizes = [total_vectors]
     
-    # Ensure we don't exceed available data
     dataset_sizes = [size for size in dataset_sizes if size <= total_vectors]
     
     if not dataset_sizes:
