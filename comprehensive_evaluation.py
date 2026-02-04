@@ -1,10 +1,3 @@
-"""
-Comprehensive Evaluation Script for Multi-dimensional Indexing + LSH
-
-Tests all 4 schemes (KD-Tree, QuadTree, Range Tree, R-Tree) combined with LSH
-using properly filtered data according to project specifications.
-"""
-
 import time
 import os
 import json
@@ -25,7 +18,7 @@ from json_formatter import format_query_results_to_json, batch_format_queries_to
 
 
 def load_filtered_data():
-    """Load and filter data according to project specifications."""
+
     print("=" * 80)
     print("LOADING AND FILTERING DATA")
     print("=" * 80)
@@ -33,12 +26,11 @@ def load_filtered_data():
     print("\n1. Loading full dataset...")
     df = load_and_process_data('data_movies_clean.csv', apply_filter=False, normalize=False)
     if df is None:
-        print("❌ Failed to load data.")
+        print(" Failed to load data.")
         return None, None, None, None, None
     
     print(f"   Loaded: {len(df)} total movies")
     
-    # Apply project-specified filters
     print("\n2. Applying project filters:")
     print("   - Release year: 2000-2020")
     print("   - Popularity: 3-6")
@@ -50,12 +42,12 @@ def load_filtered_data():
     df_filtered = filter_movies(df)
     
     if df_filtered is None or len(df_filtered) == 0:
-        print("❌ No movies match the filter criteria.")
+        print(" No movies match the filter criteria.")
         return None, None, None, None, None
     
     print(f"   Filtered: {len(df_filtered)} movies match criteria")
     
-    # Further filter: only movies with production_company_names
+
     print("\n3. Filtering for non-empty production_company_names...")
     df_filtered = df_filtered[
         df_filtered['production_company_names'].notna() & 
@@ -65,18 +57,18 @@ def load_filtered_data():
     print(f"   With production data: {len(df_filtered)} movies")
     
     if len(df_filtered) == 0:
-        print("❌ No movies with production company data.")
+        print(" No movies with production company data.")
         return None, None, None, None, None
     
-    # Sample if too large
+
     MAX_SAMPLES = 3000
     if len(df_filtered) > MAX_SAMPLES:
         print(f"\n4. Sampling {MAX_SAMPLES} movies for evaluation...")
         df_filtered = df_filtered.sample(n=MAX_SAMPLES, random_state=42)
     
-    print(f"\n✅ Final dataset: {len(df_filtered)} movies")
+    print(f"\n Final dataset: {len(df_filtered)} movies")
     
-    # Extract 5D vectors
+
     print("\n5. Extracting 5D vectors...")
     vectors, reference_df, vector_df = extract_5d_vectors(df_filtered)
     
@@ -87,7 +79,7 @@ def load_filtered_data():
         max_val = np.max(vectors[:, i])
         print(f"   - {name:15s}: [{min_val:8.2f}, {max_val:8.2f}]")
     
-    # Extract text tokens
+
     print("\n6. Extracting production company tokens...")
     text_tokens = {}
     valid_doc_ids = []
@@ -100,13 +92,13 @@ def load_filtered_data():
         text_raw = row.get('production_company_names', '')
         tokens = clean_and_tokenize(text_raw)
         
-        if tokens:  # Only include if tokens exist
+        if tokens: 
             text_tokens[idx] = tokens
             valid_doc_ids.append(idx)
     
     print(f"   Movies with valid tokens: {len(valid_doc_ids)}")
     
-    # Filter vectors to only valid documents
+
     valid_indices = [i for i, doc_id in enumerate(vector_df.index) if doc_id in valid_doc_ids]
     vectors = vectors[valid_indices]
     
@@ -121,15 +113,15 @@ def build_indices(vectors, doc_ids, text_tokens):
     
     build_times = {}
     
-    # KD-Tree
+
     print("\n1. Building KD-Tree...")
     start = time.time()
     kd = KDTree(k=5)
     kd.build(vectors.tolist(), doc_ids)
     build_times['kd_tree'] = time.time() - start
-    print(f"   ✅ Built in {build_times['kd_tree']:.4f}s")
+    print(f"    Built in {build_times['kd_tree']:.4f}s")
     
-    # QuadTree
+
     print("\n2. Building QuadTree...")
     mins = np.min(vectors, axis=0)
     maxs = np.max(vectors, axis=0)
@@ -139,21 +131,21 @@ def build_indices(vectors, doc_ids, text_tokens):
     qt = QuadTree(bounds, k=5, capacity=20)
     qt.build(vectors, doc_ids)
     build_times['quadtree'] = time.time() - start
-    print(f"   ✅ Built in {build_times['quadtree']:.4f}s")
+    print(f"    Built in {build_times['quadtree']:.4f}s")
     
-    # Range Tree
+
     print("\n3. Building Range Tree...")
     start = time.time()
     rt = RangeTree(vectors.tolist(), doc_ids)
     build_times['range_tree'] = time.time() - start
-    print(f"   ✅ Built in {build_times['range_tree']:.4f}s")
+    print(f"   Built in {build_times['range_tree']:.4f}s")
     
-    # R-Tree
+
     print("\n4. Building R-Tree...")
     start = time.time()
     r_tree = RTree(max_entries=4, min_entries=2, dimension=5)
     
-    # Limit R-Tree to 3000 points if dataset is larger
+
     num_points = len(vectors)
     if num_points > 3000:
         print(f"   (Using first 3000 points due to slow insertion)")
@@ -165,9 +157,9 @@ def build_indices(vectors, doc_ids, text_tokens):
         r_tree.insert(vectors[i], doc_ids[i])
     
     build_times['r_tree'] = time.time() - start
-    print(f"   ✅ Built in {build_times['r_tree']:.4f}s")
+    print(f"    Built in {build_times['r_tree']:.4f}s")
     
-    # LSH
+
     print("\n5. Building LSH Index...")
     start = time.time()
     lsh = MinHashLSH(num_perm=128, threshold=0.5)
@@ -175,7 +167,7 @@ def build_indices(vectors, doc_ids, text_tokens):
         sig = lsh.compute_signature(tokens)
         lsh.add(doc_id, sig)
     build_times['lsh'] = time.time() - start
-    print(f"   ✅ Built in {build_times['lsh']:.4f}s")
+    print(f"    Built in {build_times['lsh']:.4f}s")
     
     indices = {
         'kd_tree': kd,
@@ -189,16 +181,16 @@ def build_indices(vectors, doc_ids, text_tokens):
 
 
 def select_query_movies(doc_ids, text_tokens, df, num_queries=5):
-    """Select diverse query movies with good token coverage."""
+
     print("\n" + "=" * 80)
     print("SELECTING QUERY MOVIES")
     print("=" * 80)
     
-    # Sort by number of tokens (descending) to get movies with rich data
+
     doc_token_counts = [(doc_id, len(text_tokens[doc_id])) for doc_id in doc_ids]
     doc_token_counts.sort(key=lambda x: x[1], reverse=True)
     
-    # Select top N with different token counts for diversity
+
     query_movies = []
     step = max(1, len(doc_token_counts) // (num_queries * 2))
     
@@ -208,7 +200,7 @@ def select_query_movies(doc_ids, text_tokens, df, num_queries=5):
             break
         query_movies.append(doc_id)
     
-    print(f"\n✅ Selected {len(query_movies)} query movies:\n")
+    print(f"\n Selected {len(query_movies)} query movies:\n")
     for i, doc_id in enumerate(query_movies, 1):
         title = df.loc[doc_id, 'title'] if doc_id in df.index and 'title' in df.columns else 'Unknown'
         tokens = text_tokens[doc_id]
@@ -221,11 +213,11 @@ def run_query(scheme_name, query_func, lsh, query_sig, query_tokens):
     """Run a single query and return results with timing."""
     start = time.time()
     
-    # Phase 1: Tree query
+
     tree_results = query_func()
     tree_time = time.time() - start
     
-    # Extract doc_ids from results
+
     tree_doc_ids = []
     for result in tree_results:
         if isinstance(result, tuple) and len(result) == 2:
@@ -234,21 +226,21 @@ def run_query(scheme_name, query_func, lsh, query_sig, query_tokens):
             doc_id = result
         tree_doc_ids.append(doc_id)
     
-    # Phase 2: LSH similarity filtering
+
     lsh_start = time.time()
     lsh_candidates = lsh.query(query_sig)
     
-    # Find intersection
+
     final_doc_ids = set(tree_doc_ids).intersection(lsh_candidates)
     
-    # Compute similarities for final candidates
+
     similarities = []
     for doc_id in final_doc_ids:
         if doc_id in lsh.signatures:
             sim = lsh.get_jaccard_sim(query_sig, lsh.signatures[doc_id])
             similarities.append((doc_id, sim))
     
-    # Sort by similarity
+
     similarities.sort(key=lambda x: x[1], reverse=True)
     
     lsh_time = time.time() - lsh_start
@@ -262,12 +254,12 @@ def run_query(scheme_name, query_func, lsh, query_sig, query_tokens):
         'tree_time': tree_time,
         'lsh_time': lsh_time,
         'total_time': total_time,
-        'results': similarities  # List of (doc_id, similarity)
+        'results': similarities  
     }
 
 
 def run_all_queries(indices, query_movies, text_tokens, df, vectors, doc_ids, top_n=10):
-    """Run all queries for all schemes."""
+
     print("\n" + "=" * 80)
     print("RUNNING QUERIES")
     print("=" * 80)
@@ -278,8 +270,7 @@ def run_all_queries(indices, query_movies, text_tokens, df, vectors, doc_ids, to
     r_tree = indices['r_tree']
     lsh = indices['lsh']
     
-    # Define range query bounds dynamically using data percentiles
-    # This ensures queries match actual data distribution
+
     q_min = np.percentile(vectors, 25, axis=0).tolist()
     q_max = np.percentile(vectors, 75, axis=0).tolist()
     
@@ -288,7 +279,7 @@ def run_all_queries(indices, query_movies, text_tokens, df, vectors, doc_ids, to
     for i, name in enumerate(dim_names):
         print(f"   {name:15s}: [{q_min[i]:12.2f}, {q_max[i]:12.2f}]")
     
-    all_results = defaultdict(dict)  # {query_id: {scheme_name: results}}
+    all_results = defaultdict(dict) 
     
     for query_idx, query_doc_id in enumerate(query_movies, 1):
         print(f"\n{'-' * 80}")
@@ -301,7 +292,7 @@ def run_all_queries(indices, query_movies, text_tokens, df, vectors, doc_ids, to
         query_sig = lsh.compute_signature(query_tokens)
         print(f"Tokens ({len(query_tokens)}): {query_tokens[:10]}{'...' if len(query_tokens) > 10 else ''}")
         
-        # KD-Tree
+
         print("\n  → KD-Tree + LSH...", end=" ")
         res_kd = run_query(
             "KD-Tree + LSH",
@@ -311,8 +302,8 @@ def run_all_queries(indices, query_movies, text_tokens, df, vectors, doc_ids, to
         print(f"✓ ({res_kd['final_count']} results in {res_kd['total_time']:.4f}s)")
         all_results[query_doc_id]['kd_tree'] = res_kd
         
-        # QuadTree
-        print("  → QuadTree + LSH...", end=" ")
+ 
+        print("   QuadTree + LSH...", end=" ")
         q_bounds = np.column_stack((q_min, q_max))
         q_bounds[3, 0] = mins[3]
         q_bounds[3, 1] = maxs[3]
@@ -331,7 +322,7 @@ def run_all_queries(indices, query_movies, text_tokens, df, vectors, doc_ids, to
         print(f"✓ ({res_qt['final_count']} results in {res_qt['total_time']:.4f}s)")
         all_results[query_doc_id]['quadtree'] = res_qt
         
-        # Range Tree
+
         print("  → Range Tree + LSH...", end=" ")
         res_rt = run_query(
             "Range Tree + LSH",
@@ -341,7 +332,7 @@ def run_all_queries(indices, query_movies, text_tokens, df, vectors, doc_ids, to
         print(f"✓ ({res_rt['final_count']} results in {res_rt['total_time']:.4f}s)")
         all_results[query_doc_id]['range_tree'] = res_rt
         
-        # R-Tree
+
         print("  → R-Tree + LSH...", end=" ")
         res_r = run_query(
             "R-Tree + LSH",
@@ -355,7 +346,7 @@ def run_all_queries(indices, query_movies, text_tokens, df, vectors, doc_ids, to
 
 
 def save_results_as_json(all_results, text_tokens, df, output_dir='evaluation_results'):
-    """Save all results as JSON files."""
+
     print("\n" + "=" * 80)
     print("SAVING RESULTS")
     print("=" * 80)
@@ -364,13 +355,13 @@ def save_results_as_json(all_results, text_tokens, df, output_dir='evaluation_re
     
     for query_id, schemes in all_results.items():
         for scheme_name, result in schemes.items():
-            # Convert results to expected format for json_formatter
+
             top_results = []
             for doc_id, similarity in result['results'][:10]:  # Top 10
                 tokens = text_tokens.get(doc_id, [])
                 top_results.append((doc_id, similarity, tokens))
             
-            # Generate JSON
+
             filename = f"{output_dir}/query_{query_id}_{scheme_name}.json"
             json_str = format_query_results_to_json(
                 top_results,
@@ -382,9 +373,9 @@ def save_results_as_json(all_results, text_tokens, df, output_dir='evaluation_re
                 pretty_print=True
             )
     
-    print(f"\n✅ Saved individual query results to {output_dir}/")
+    print(f"\n Saved individual query results to {output_dir}/")
     
-    # Create performance summary
+
     summary = {
         "queries": [],
         "scheme_comparison": {}
@@ -408,16 +399,16 @@ def save_results_as_json(all_results, text_tokens, df, output_dir='evaluation_re
         
         summary["queries"].append(query_summary)
     
-    # Save summary
+
     summary_file = f"{output_dir}/performance_summary.json"
     with open(summary_file, 'w', encoding='utf-8') as f:
         json.dump(summary, f, indent=2, ensure_ascii=False)
     
-    print(f"✅ Saved performance summary to {summary_file}")
+    print(f" Saved performance summary to {summary_file}")
 
 
 def print_performance_summary(all_results, build_times):
-    """Print performance comparison table."""
+
     print("\n" + "=" * 80)
     print("PERFORMANCE SUMMARY")
     print("=" * 80)
@@ -447,36 +438,36 @@ def print_performance_summary(all_results, build_times):
 
 
 def main():
-    """Main evaluation workflow."""
+
     print("\n" + "=" * 80)
     print("  COMPREHENSIVE EVALUATION: Multi-dimensional Indexing + LSH")
     print("=" * 80)
     
-    # 1. Load and filter data
+
     data = load_filtered_data()
     if data[0] is None:
-        print("\n❌ Evaluation aborted: No valid data.")
+        print("\n Evaluation aborted: No valid data.")
         return
     
     vectors, text_tokens, doc_ids, df = data
     
-    # 2. Build indices
+
     indices, build_times = build_indices(vectors, doc_ids, text_tokens)
     
-    # 3. Select query movies
+ 
     query_movies = select_query_movies(doc_ids, text_tokens, df, num_queries=5)
     
-    # 4. Run all queries
+
     all_results = run_all_queries(indices, query_movies, text_tokens, df, vectors, doc_ids, top_n=10)
     
-    # 5. Save results
+
     save_results_as_json(all_results, text_tokens, df)
     
-    # 6. Print summary
+
     print_performance_summary(all_results, build_times)
     
-    print("\n✅ EVALUATION COMPLETE!")
-    print("   Check the 'evaluation_results/' directory for detailed JSON outputs.\n")
+    print("\n EVALUATION COMPLETE!")
+
 
 
 if __name__ == "__main__":
