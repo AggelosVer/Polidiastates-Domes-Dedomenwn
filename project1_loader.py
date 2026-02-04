@@ -10,26 +10,25 @@ def filter_movies(df):
     
     if 'release_year' in filtered_df.columns:
         filtered_df = filtered_df[
-            (filtered_df['release_year'] >= 2000) & 
-            (filtered_df['release_year'] <= 2020)
+            (filtered_df['release_year'] >= 1990) & 
+            (filtered_df['release_year'] <= 2024)
         ]
     
     if 'popularity' in filtered_df.columns:
         filtered_df = filtered_df[
-            (filtered_df['popularity'] >= 3) & 
-            (filtered_df['popularity'] <= 6)
+            (filtered_df['popularity'] >= 1)
         ]
     
     if 'vote_average' in filtered_df.columns:
         filtered_df = filtered_df[
-            (filtered_df['vote_average'] >= 3) & 
-            (filtered_df['vote_average'] <= 5)
+            (filtered_df['vote_average'] >= 4) & 
+            (filtered_df['vote_average'] <= 10)
         ]
     
     if 'runtime' in filtered_df.columns:
         filtered_df = filtered_df[
-            (filtered_df['runtime'] >= 30) & 
-            (filtered_df['runtime'] <= 60)
+            (filtered_df['runtime'] >= 60) & 
+            (filtered_df['runtime'] <= 240)
         ]
     
     if 'origin_country' in filtered_df.columns:

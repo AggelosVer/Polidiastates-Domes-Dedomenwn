@@ -192,16 +192,13 @@ def main():
     data_values = reference_df['id'].tolist() if 'id' in reference_df.columns else list(range(len(vectors)))
     
     total_vectors = len(vectors)
-    if total_vectors >= 2000:
-        dataset_sizes = [100, 500, 1000, 2000]
-    elif total_vectors >= 1000:
-        dataset_sizes = [100, 500, 1000]
-    elif total_vectors >= 500:
-        dataset_sizes = [100, 500]
+    # Keep sizes small to avoid Range Tree hanging (O(n log^d n) with d=5)
+    if total_vectors >= 500:
+        dataset_sizes = [100, 250, 500]
+    elif total_vectors >= 250:
+        dataset_sizes = [100, 250]
     elif total_vectors >= 100:
         dataset_sizes = [50, 100]
-    elif total_vectors >= 50:
-        dataset_sizes = [20, total_vectors]
     else:
         dataset_sizes = [total_vectors]
     

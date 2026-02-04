@@ -278,9 +278,15 @@ def run_all_queries(indices, query_movies, text_tokens, df, vectors, doc_ids, to
     r_tree = indices['r_tree']
     lsh = indices['lsh']
     
-    # Define range query bounds (from project specs)
-    q_min = [3.0, 3.0, 30.0, -float('inf'), 2000.0]
-    q_max = [6.0, 5.0, 60.0, float('inf'), 2020.0]
+    # Define range query bounds dynamically using data percentiles
+    # This ensures queries match actual data distribution
+    q_min = np.percentile(vectors, 25, axis=0).tolist()
+    q_max = np.percentile(vectors, 75, axis=0).tolist()
+    
+    print(f"\nDynamic Query Range (25th-75th percentile):")
+    dim_names = ['popularity', 'vote_average', 'runtime', 'budget', 'release_year']
+    for i, name in enumerate(dim_names):
+        print(f"   {name:15s}: [{q_min[i]:12.2f}, {q_max[i]:12.2f}]")
     
     all_results = defaultdict(dict)  # {query_id: {scheme_name: results}}
     
