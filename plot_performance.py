@@ -1,3 +1,4 @@
+import os
 import time
 import numpy as np
 import matplotlib.pyplot as plt
@@ -23,6 +24,7 @@ def benchmark_varying_size(max_size=5000, step=500):
         print("Failed to load data")
         return None
     
+
     df = df[df['production_company_names'].notna() & (df['production_company_names'] != '')]
     
     if len(df) > max_size:
@@ -68,6 +70,7 @@ def benchmark_varying_size(max_size=5000, step=500):
         d = doc_ids[:size]
         t = {k: v for k, v in text_tokens.items() if k in d}
         
+
         print("  Building KD-Tree...", end=" ")
         start = time.time()
         kd = KDTree(k=5)
@@ -82,6 +85,7 @@ def benchmark_varying_size(max_size=5000, step=500):
         results['kd_tree']['query'].append(kd_query)
         print(f"Build: {kd_build:.4f}s, Query: {kd_query:.4f}s")
         
+
         print("  Building QuadTree...", end=" ")
         b = np.column_stack((mins, maxs + 0.001))
         start = time.time()
@@ -98,6 +102,7 @@ def benchmark_varying_size(max_size=5000, step=500):
         results['quadtree']['query'].append(qt_query)
         print(f"Build: {qt_build:.4f}s, Query: {qt_query:.4f}s")
         
+
         print("  Building Range Tree...", end=" ")
         start = time.time()
         rt = RangeTree(v.tolist(), d)
@@ -111,6 +116,7 @@ def benchmark_varying_size(max_size=5000, step=500):
         results['range_tree']['query'].append(rt_query)
         print(f"Build: {rt_build:.4f}s, Query: {rt_query:.4f}s")
         
+
         if size <= 2000:
             print("  Building R-Tree...", end=" ")
             start = time.time()
@@ -131,6 +137,7 @@ def benchmark_varying_size(max_size=5000, step=500):
             results['r_tree']['query'].append(None)
             print("Skipped (too slow for large datasets)")
         
+
         print("  Building LSH...", end=" ")
         start = time.time()
         lsh = MinHashLSH(num_perm=128, threshold=0.5)
@@ -297,6 +304,9 @@ if __name__ == "__main__":
     print("  Comparing: KD-Tree, QuadTree, Range Tree, R-Tree + LSH")
     print("=" * 80)
     
+    output_dir = "benchmark_plots"
+    os.makedirs(output_dir, exist_ok=True)
+    
     results = benchmark_varying_size(max_size=3000, step=300)
     
     if results:
@@ -304,23 +314,23 @@ if __name__ == "__main__":
         print("GENERATING PLOTS")
         print("=" * 80 + "\n")
         
-        plot_build_times(results, log_scale=False, save_path='build_times_linear.png')
-        plot_build_times(results, log_scale=True, save_path='build_times_log.png')
+        plot_build_times(results, log_scale=False, save_path=os.path.join(output_dir, 'build_times_linear.png'))
+        plot_build_times(results, log_scale=True, save_path=os.path.join(output_dir, 'build_times_log.png'))
         
-        plot_query_times(results, log_scale=False, save_path='query_times_linear.png')
-        plot_query_times(results, log_scale=True, save_path='query_times_log.png')
+        plot_query_times(results, log_scale=False, save_path=os.path.join(output_dir, 'query_times_linear.png'))
+        plot_query_times(results, log_scale=True, save_path=os.path.join(output_dir, 'query_times_log.png'))
         
-        plot_combined_comparison(results, save_path='combined_comparison.png')
+        plot_combined_comparison(results, save_path=os.path.join(output_dir, 'combined_comparison.png'))
         
-        plot_bar_comparison(results, save_path='bar_comparison.png')
+        plot_bar_comparison(results, save_path=os.path.join(output_dir, 'bar_comparison.png'))
         
         print("\n" + "=" * 80)
         print("PLOTTING COMPLETE")
         print("=" * 80)
-        print("\nGenerated files:")
-        print("  - build_times_linear.png")
-        print("  - build_times_log.png")
-        print("  - query_times_linear.png")
-        print("  - query_times_log.png")
-        print("  - combined_comparison.png")
-        print("  - bar_comparison.png")
+        print("\nGenerated files in " + output_dir + ":")
+        print(f"  - build_times_linear.png")
+        print(f"  - build_times_log.png")
+        print(f"  - query_times_linear.png")
+        print(f"  - query_times_log.png")
+        print(f"  - combined_comparison.png")
+        print(f"  - bar_comparison.png")

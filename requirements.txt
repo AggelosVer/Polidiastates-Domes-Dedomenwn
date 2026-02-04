@@ -17,7 +17,7 @@ ipykernel>=6.25.0
 
 # Memory Profiling
 psutil>=5.9.0
-tracemalloc2>=1.0.0
+
 
 # Text Processing
 nltk>=3.8.0
