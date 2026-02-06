@@ -117,7 +117,7 @@ def benchmark_varying_size(max_size=5000, step=500):
         print(f"Build: {rt_build:.4f}s, Query: {rt_query:.4f}s")
         
 
-        if size <= 2000:
+        if size <= 3000:
             print("  Building R-Tree...", end=" ")
             start = time.time()
             r_tree = RTree(max_entries=4, min_entries=2, dimension=5)
@@ -213,7 +213,7 @@ def plot_query_times(results, log_scale=False, save_path='query_times.png'):
     print(f"Saved: {save_path}")
     plt.close()
 
-def plot_combined_comparison(results, save_path='combined_comparison.png'):
+def plot_combined_comparison(results, log_scale=True, save_path='combined_comparison.png'):
     sizes = results['sizes']
     
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6))
@@ -228,10 +228,14 @@ def plot_combined_comparison(results, save_path='combined_comparison.png'):
         ax1.plot(r_sizes, r_times, marker='d', label='R-Tree', linewidth=2)
     
     ax1.set_xlabel('Dataset Size', fontsize=11)
-    ax1.set_ylabel('Build Time (seconds)', fontsize=11)
+    if log_scale:
+        ax1.set_yscale('log')
+        ax1.set_ylabel('Build Time (seconds, log scale)', fontsize=11)
+    else:
+        ax1.set_ylabel('Build Time (seconds)', fontsize=11)
     ax1.set_title('Build Time Comparison', fontsize=13, fontweight='bold')
     ax1.legend(fontsize=10)
-    ax1.grid(True, alpha=0.3)
+    ax1.grid(True, alpha=0.3, which='both' if log_scale else 'major')
     
     ax2.plot(sizes, results['kd_tree']['query'], marker='o', label='KD-Tree', linewidth=2)
     ax2.plot(sizes, results['quadtree']['query'], marker='s', label='QuadTree', linewidth=2)
@@ -243,17 +247,20 @@ def plot_combined_comparison(results, save_path='combined_comparison.png'):
         ax2.plot(r_sizes_q, r_times_q, marker='d', label='R-Tree', linewidth=2)
     
     ax2.set_xlabel('Dataset Size', fontsize=11)
-    ax2.set_ylabel('Query Time (seconds)', fontsize=11)
+    if log_scale:
+        ax2.set_yscale('log')
+        ax2.set_ylabel('Query Time (seconds, log scale)', fontsize=11)
+    else:
+        ax2.set_ylabel('Query Time (seconds)', fontsize=11)
     ax2.set_title('Query Time Comparison', fontsize=13, fontweight='bold')
     ax2.legend(fontsize=10)
-    ax2.grid(True, alpha=0.3)
+    ax2.grid(True, alpha=0.3, which='both' if log_scale else 'major')
     
     plt.tight_layout()
     plt.savefig(save_path, dpi=300, bbox_inches='tight')
-    print(f"Saved: {save_path}")
     plt.close()
 
-def plot_bar_comparison(results, save_path='bar_comparison.png'):
+def plot_bar_comparison(results, log_scale=False, save_path='bar_comparison.png'):
     last_size = results['sizes'][-1]
     schemes = ['KD-Tree', 'QuadTree', 'Range Tree', 'R-Tree']
     
@@ -279,12 +286,17 @@ def plot_bar_comparison(results, save_path='bar_comparison.png'):
     bars2 = ax.bar(x + width/2, query_times, width, label='Query Time', alpha=0.8)
     
     ax.set_xlabel('Index Scheme', fontsize=12)
-    ax.set_ylabel('Time (seconds)', fontsize=12)
+    if log_scale:
+        ax.set_yscale('log')
+        ax.set_ylabel('Time (seconds, log scale)', fontsize=12)
+    else:
+        ax.set_ylabel('Time (seconds)', fontsize=12)
+        
     ax.set_title(f'Build vs Query Time (n={last_size})', fontsize=14, fontweight='bold')
     ax.set_xticks(x)
     ax.set_xticklabels(schemes)
     ax.legend(fontsize=11)
-    ax.grid(True, alpha=0.3, axis='y')
+    ax.grid(True, alpha=0.3, axis='y', which='both' if log_scale else 'major')
     
     for bars in [bars1, bars2]:
         for bar in bars:
@@ -314,15 +326,10 @@ if __name__ == "__main__":
         print("GENERATING PLOTS")
         print("=" * 80 + "\n")
         
-        plot_build_times(results, log_scale=False, save_path=os.path.join(output_dir, 'build_times_linear.png'))
-        plot_build_times(results, log_scale=True, save_path=os.path.join(output_dir, 'build_times_log.png'))
-        
-        plot_query_times(results, log_scale=False, save_path=os.path.join(output_dir, 'query_times_linear.png'))
-        plot_query_times(results, log_scale=True, save_path=os.path.join(output_dir, 'query_times_log.png'))
-        
-        plot_combined_comparison(results, save_path=os.path.join(output_dir, 'combined_comparison.png'))
-        
-        plot_bar_comparison(results, save_path=os.path.join(output_dir, 'bar_comparison.png'))
+        plot_build_times(results, log_scale=True, save_path=os.path.join(output_dir, 'build_times.png'))
+        plot_query_times(results, log_scale=True, save_path=os.path.join(output_dir, 'query_times.png'))
+        plot_combined_comparison(results, log_scale=True, save_path=os.path.join(output_dir, 'combined_comparison.png'))
+        plot_bar_comparison(results, log_scale=True, save_path=os.path.join(output_dir, 'bar_comparison.png'))
         
         print("\n" + "=" * 80)
         print("PLOTTING COMPLETE")
