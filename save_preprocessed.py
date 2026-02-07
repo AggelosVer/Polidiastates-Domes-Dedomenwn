@@ -60,15 +60,6 @@ def save_preprocessed_dataset(input_filepath='data_movies_clean.csv',
     print(f"       Filtered dataset: {rows_after} movies retained ({rows_removed} removed)")
     
 
-    print("\n      Filter criteria applied:")
-    print("        • Release year: 2000-2020")
-    print("        • Popularity: 3-6")
-    print("        • Vote average: 3-5")
-    print("        • Runtime: 30-60 minutes")
-    print("        • Origin country: US or GB")
-    print("        • Original language: English")
-    
-
     print(f"\n[5/5] Saving preprocessed dataset to '{output_filepath}'...")
     try:
         df_filtered.to_csv(output_filepath, index=False)

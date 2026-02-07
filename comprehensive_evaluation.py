@@ -31,13 +31,6 @@ def load_filtered_data():
     
     print(f"   Loaded: {len(df)} total movies")
     
-    print("\n2. Applying project filters:")
-    print("   - Release year: 2000-2020")
-    print("   - Popularity: 3-6")
-    print("   - Vote average: 3-5")
-    print("   - Runtime: 30-60 minutes")
-    print("   - Origin country: US or GB")
-    print("   - Original language: en")
     
     df_filtered = filter_movies(df)
     
@@ -106,7 +99,6 @@ def load_filtered_data():
 
 
 def build_indices(vectors, doc_ids, text_tokens):
-    """Build all 4 index structures and LSH."""
     print("\n" + "=" * 80)
     print("BUILDING INDICES")
     print("=" * 80)
