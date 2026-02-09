@@ -83,7 +83,7 @@ def load_filtered_data():
         
         row = df_filtered.loc[idx]
         text_raw = row.get('production_company_names', '')
-        tokens = clean_and_tokenize(text_raw)
+        tokens = clean_and_tokenize(text_raw, use_shingles=True, k=3)
         
         if tokens: 
             text_tokens[idx] = tokens

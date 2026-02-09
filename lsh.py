@@ -72,19 +72,29 @@ def find_top_n_similar_movies(
     query_movie_id: int = None,
     top_n: int = 10,
     num_perm: int = 128,
-    threshold: float = 0.5
+    threshold: float = 0.5,
+    use_shingles: bool = True,
+    k: int = 3
 ) -> List[Tuple[int, float, List[str]]]:
 
     import pandas as pd
     import ast
     import re
     
-    def clean_and_tokenize(text):
+    def get_shingles(text, k=3):
+        if not text: return []
+        text = text.lower()
+        text = re.sub(r'[^\w\s]', '', text)
+        if len(text) < k: return [text]
+        shingles = set()
+        for i in range(len(text) - k + 1):
+            shingles.add(text[i:i+k])
+        return list(shingles)
 
+    def clean_and_tokenize(text, use_shingles=True, k=3):
         if pd.isna(text):
             return []
         try:
-
             if isinstance(text, str) and text.strip().startswith('[') and text.strip().endswith(']'):
                 items = ast.literal_eval(text)
             else:
@@ -99,10 +109,14 @@ def find_top_n_similar_movies(
         for item in items:
             if not isinstance(item, str):
                 continue
-            item_lower = item.lower()
-            item_clean = re.sub(r'[^\w\s]', '', item_lower)
-            tokens = item_clean.split()
-            all_tokens.update(tokens)
+            
+            if use_shingles:
+                all_tokens.update(get_shingles(item, k=k))
+            else:
+                item_lower = item.lower()
+                item_clean = re.sub(r'[^\w\s]', '', item_lower)
+                tokens = item_clean.split()
+                all_tokens.update(tokens)
         
         return list(all_tokens)
     
@@ -146,7 +160,7 @@ def find_top_n_similar_movies(
             text_raw = ''
         
 
-        tokens = clean_and_tokenize(text_raw)
+        tokens = clean_and_tokenize(text_raw, use_shingles=use_shingles, k=k)
         movie_tokens[movie_id] = tokens
         
 

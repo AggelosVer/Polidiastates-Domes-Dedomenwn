@@ -2,7 +2,24 @@ import pandas as pd
 import re
 import ast
 
-def clean_and_tokenize(text):
+def get_shingles(text, k=3):
+    """Convert text into a set of character k-shingles."""
+    if not text:
+        return []
+    
+    # Normalize text: lower case and remove special characters
+    text = text.lower()
+    text = re.sub(r'[^\w\s]', '', text)
+    
+    if len(text) < k:
+        return [text]
+    
+    shingles = set()
+    for i in range(len(text) - k + 1):
+        shingles.add(text[i:i+k])
+    return list(shingles)
+
+def clean_and_tokenize(text, use_shingles=False, k=3):
     if pd.isna(text):
         return []
     try:
@@ -12,16 +29,24 @@ def clean_and_tokenize(text):
             items = [text]
     except (ValueError, SyntaxError):
         items = [text]
+    
     if not isinstance(items, list):
         items = [str(items)]
+        
     all_tokens = set()
     for item in items:
         if not isinstance(item, str):
             continue
-        item_lower = item.lower()
-        item_clean = re.sub(r'[^\w\s]', '', item_lower)
-        tokens = item_clean.split()
-        all_tokens.update(tokens)
+            
+        if use_shingles:
+            shingles = get_shingles(item, k=k)
+            all_tokens.update(shingles)
+        else:
+            item_lower = item.lower()
+            item_clean = re.sub(r'[^\w\s]', '', item_lower)
+            tokens = item_clean.split()
+            all_tokens.update(tokens)
+            
     return list(all_tokens)
 
 def main():
