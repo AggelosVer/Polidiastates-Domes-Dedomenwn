@@ -41,7 +41,7 @@ def load_filtered_data():
     print(f"   Filtered: {len(df_filtered)} movies match criteria")
     
 
-    print("\n3. Filtering for non-empty production_company_names...")
+    print("\n2. Filtering for non-empty production_company_names...")
     df_filtered = df_filtered[
         df_filtered['production_company_names'].notna() & 
         (df_filtered['production_company_names'] != '') &
@@ -56,13 +56,13 @@ def load_filtered_data():
 
     MAX_SAMPLES = 3000
     if len(df_filtered) > MAX_SAMPLES:
-        print(f"\n4. Sampling {MAX_SAMPLES} movies for evaluation...")
+        print(f"\n3. Sampling {MAX_SAMPLES} movies for evaluation...")
         df_filtered = df_filtered.sample(n=MAX_SAMPLES, random_state=42)
     
     print(f"\n Final dataset: {len(df_filtered)} movies")
     
 
-    print("\n5. Extracting 5D vectors...")
+    print("\n4. Extracting 5D vectors...")
     vectors, reference_df, vector_df = extract_5d_vectors(df_filtered)
     
     print("\n   Vector Statistics:")
@@ -73,7 +73,7 @@ def load_filtered_data():
         print(f"   - {name:15s}: [{min_val:8.2f}, {max_val:8.2f}]")
     
 
-    print("\n6. Extracting production company tokens...")
+    print("\n5. Extracting production company tokens...")
     text_tokens = {}
     valid_doc_ids = []
     
@@ -172,19 +172,34 @@ def build_indices(vectors, doc_ids, text_tokens):
     return indices, build_times
 
 
-def select_query_movies(doc_ids, text_tokens, df, num_queries=5):
+def select_query_movies(doc_ids, text_tokens, df, vectors, q_min, q_max, num_queries=5):
 
     print("\n" + "=" * 80)
     print("SELECTING QUERY MOVIES")
     print("=" * 80)
     
 
-    doc_token_counts = [(doc_id, len(text_tokens[doc_id])) for doc_id in doc_ids]
+    candidate_ids = []
+    for i, doc_id in enumerate(doc_ids):
+        point = vectors[i]
+        is_in_range = True
+        for d in range(len(q_min)):
+            if not (q_min[d] <= point[d] <= q_max[d]):
+                is_in_range = False
+                break
+        if is_in_range:
+            candidate_ids.append(doc_id)
+    
+    if len(candidate_ids) == 0:
+        print("    Warning: No movies found within the query range. Falling back to all movies.")
+        candidate_ids = doc_ids
+
+    doc_token_counts = [(doc_id, len(text_tokens[doc_id])) for doc_id in candidate_ids]
     doc_token_counts.sort(key=lambda x: x[1], reverse=True)
     
 
     query_movies = []
-    step = max(1, len(doc_token_counts) // (num_queries * 2))
+    step = max(1, len(doc_token_counts) // (num_queries * 1))
     
     for i in range(0, min(len(doc_token_counts), num_queries * step), step):
         doc_id, token_count = doc_token_counts[i]
@@ -250,7 +265,7 @@ def run_query(scheme_name, query_func, lsh, query_sig, query_tokens):
     }
 
 
-def run_all_queries(indices, query_movies, text_tokens, df, vectors, doc_ids, top_n=10):
+def run_all_queries(indices, query_movies, text_tokens, df, vectors, doc_ids, q_min, q_max, top_n=10):
 
     print("\n" + "=" * 80)
     print("RUNNING QUERIES")
@@ -263,8 +278,6 @@ def run_all_queries(indices, query_movies, text_tokens, df, vectors, doc_ids, to
     lsh = indices['lsh']
     
 
-    q_min = np.percentile(vectors, 25, axis=0).tolist()
-    q_max = np.percentile(vectors, 75, axis=0).tolist()
     
     print(f"\nDynamic Query Range (25th-75th percentile):")
     dim_names = ['popularity', 'vote_average', 'runtime', 'budget', 'release_year']
@@ -447,10 +460,15 @@ def main():
     indices, build_times = build_indices(vectors, doc_ids, text_tokens)
     
  
-    query_movies = select_query_movies(doc_ids, text_tokens, df, num_queries=5)
+    # Calculate query range first
+    q_min = np.percentile(vectors, 25, axis=0).tolist()
+    q_max = np.percentile(vectors, 75, axis=0).tolist()
     
-
-    all_results = run_all_queries(indices, query_movies, text_tokens, df, vectors, doc_ids, top_n=10)
+    # Select movies that are INSIDE this range so we get results
+    query_movies = select_query_movies(doc_ids, text_tokens, df, vectors, q_min, q_max, num_queries=5)
+    
+    # Run queries with pre-calculated range
+    all_results = run_all_queries(indices, query_movies, text_tokens, df, vectors, doc_ids, q_min, q_max, top_n=10)
     
 
     save_results_as_json(all_results, text_tokens, df)
