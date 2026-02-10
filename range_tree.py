@@ -168,7 +168,7 @@ class RangeTree:
         return f"O(n log^{self.dimension - 1} n)"
     
     def get_query_complexity(self) -> str:
-        return f"O(log^{self.dimension} n + k) where k is the number of results"
+        return f"O(log^{self.dimension} n + k)"
     
     def get_space_complexity(self) -> str:
         return f"O(n log^{self.dimension - 1} n)"

@@ -171,3 +171,57 @@ class QuadTree:
         if node.is_leaf:
             return 1
         return 1 + max(self._get_height(child) for child in node.children)
+
+if __name__ == "__main__":
+    # Define bounds for a 2D space: x range [0, 10], y range [0, 10]
+    bounds = np.array([[0, 10], [0, 10]])
+    
+    # Initialize QuadTree with capacity 2 (to trigger subdivide easily)
+    qt = QuadTree(bounds, capacity=2)
+    
+    # Initial points and data
+    points = np.array([
+        [2.0, 3.0],
+        [5.0, 4.0],
+        [9.0, 6.0],
+        [4.0, 7.0],
+        [8.0, 1.0],
+        [7.0, 2.0]
+    ])
+    data = ["A", "B", "C", "D", "E", "F"]
+    
+    print("--- QuadTree Demo ---")
+    print("Building tree with points:", list(zip(points.tolist(), data)))
+    qt.build(points, data)
+    print(f"Tree size: {qt.get_size()}, Tree height: {qt.get_height()}")
+    
+    # Range Query
+    query_rect = np.array([[0, 6], [0, 6]]) # x from 0 to 6, y from 0 to 6
+    res_points, res_data = qt.range_query(query_rect)
+    print(f"\nRange Query [0, 6] x [0, 6]:")
+    for p, d in zip(res_points, res_data):
+        print(f"  Found point {p} with data '{d}'")
+        
+    # Insert new point
+    new_p = np.array([3.0, 3.0])
+    print(f"\nInserting point {new_p} with data 'G'")
+    qt.insert(new_p, "G")
+    print(f"New size: {qt.get_size()}")
+    
+    # Range Query again
+    res_points, res_data = qt.range_query(query_rect)
+    print(f"Range Query [0, 6] x [0, 6] after insertion:")
+    for p, d in zip(res_points, res_data):
+        print(f"  Found point {p} with data '{d}'")
+        
+    # Delete a point
+    del_p = np.array([5.0, 4.0])
+    print(f"\nDeleting point {del_p}")
+    qt.delete(del_p)
+    print(f"Final size: {qt.get_size()}")
+    
+    # Final Range Query
+    res_points, res_data = qt.range_query(query_rect)
+    print(f"Range Query [0, 6] x [0, 6] after deletion:")
+    for p, d in zip(res_points, res_data):
+        print(f"  Found point {p} with data '{d}'")
